@@ -1,16 +1,9 @@
-from pathlib import Path
 import numpy as np
 import random
-from utils.track_utils import compute_curvature, compute_slope
-from omegaconf import OmegaConf
 
+from utils.track_utils import compute_curvature, compute_slope
 from agents.kart_agent import KartAgent
-from agents.team1.agent_center import AgentCenter
-from agents.team1.agent_speed import AgentSpeed
-from agents.team1.agent_obstacles import AgentObstacles
-from agents.team1.agent_rescue import AgentRescue
-from agents.team1.agent_items import AgentItems
-from agents.team1.agent_drift import AgentDrift
+
 
 class Agent1(KartAgent):
     def __init__(self, env, path_lookahead=3):
@@ -19,25 +12,51 @@ class Agent1(KartAgent):
         self.agent_positions = []
         self.obs = None
         self.isEnd = False
-        self.name = "Tasty Crousteam"
-
-        path_conf = Path(__file__).resolve().parent
-        path_conf = str(path_conf) + '/ConfigFileTeam1.yaml'   #Chemin du fichier de configuration
-        self.conf = OmegaConf.load(path_conf)                           #Importation du fichier de configuration
-
-        self.agentCenter = AgentCenter(env, self.conf, self.path_lookahead)
-        self.agentSpeed = AgentSpeed(env, self.conf, self.agentCenter, self.path_lookahead)
-        self.agentObstacles = AgentObstacles(env, self.conf, self.agentSpeed, self.path_lookahead)
-        self.agentRescue = AgentRescue(env, self.conf, self.agentObstacles)
-        self.agentItems = AgentItems(env, self.conf, self.agentRescue)
-        self.AgentDrift = AgentDrift(env, self.conf, self.agentItems)
+        self.name = "BEN-OMRANE Aines" # replace with your chosen name
+        self.time=20
+        self.b=True
 
     def reset(self):
         self.obs, _ = self.env.reset()
         self.agent_positions = []
+        self.time=20
+        self.b=True
 
     def endOfTrack(self):
         return self.isEnd
 
     def choose_action(self, obs):
-        return self.agentItems.choose_action(obs)
+        #faire le demi tour
+        if(self.b):
+            acceleration = 0.1 
+            steering =1 # pour pouvoir faire le tour (ou -1)
+            action = {
+                "acceleration": acceleration,
+                "steer": steering,
+                "brake": False, # bool(random.getrandbits(1)),
+                "drift": bool(random.getrandbits(1)),
+                "nitro": bool(random.getrandbits(1)),
+                "rescue":bool(random.getrandbits(1)),
+                "fire": bool(random.getrandbits(1)),
+            }
+            self.b=False
+            return action
+        #rouler en marche arriere
+        points = obs.get("paths_start",[]) # On récupère la liste des points
+        target = points[2] # On récupère le x-ème point de la liste defini par la variable de classe
+        
+        gx = target[0] # On récupère x, le décalage latéral
+        gz = target[2] # On récupère z, la profondeur
+
+        steering =self.steering.manage_pure_pursuit(gx,gz,2)
+        action = {
+            "acceleration": 0.0,
+            "steer": steering,
+            "brake": True,
+            "drift": False,
+            "nitro": False,
+            "rescue":False,
+            "fire":False,
+        }
+        
+        return action
